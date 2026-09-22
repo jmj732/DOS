@@ -1,0 +1,19 @@
+# 이 파일은 promote-to-prod.yaml 워크플로가 여는 PR을 통해서만 바뀐다.
+# 직접 커밋으로 이 파일을 고치지 않는 것이 이 저장소의 규칙이다.
+image:
+  repository: ghcr.io/jmj732/hello-service
+  tag: dev-latest
+
+replicaCount: 2
+
+env:
+  - name: APP_ENV
+    value: "prod"
+
+resources:
+  requests:
+    cpu: 150m
+    memory: 192Mi
+  limits:
+    cpu: 750m
+    memory: 384Mi

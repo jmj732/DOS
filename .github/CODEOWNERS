@@ -1,0 +1,3 @@
+# 실무라면 이렇게 prod 변경에 필수 리뷰어를 강제한다.
+# (개인 학습 저장소라 실제로 활성화하지는 않았다 — docs/ARCHITECTURE.md 참고)
+# /gitops/values/prod/ @platform-team

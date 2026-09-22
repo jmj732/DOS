@@ -1,0 +1,43 @@
+name: Promote hello-service to prod
+
+# 이 워크플로가 이 저장소에서 prod values를 바꾸는 유일한 경로다.
+# 직접 push하는 job은 존재하지 않는다 — 항상 PR을 통해서만 반영된다.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "dev에서 검증된 이미지 태그 (예: sha-abcdef123456). gitops/values/dev/hello-service.yaml에서 확인."
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install yq
+        run: |
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update prod image tag
+        run: yq eval -i '.image.tag = "${{ inputs.image_tag }}"' gitops/values/prod/hello-service.yaml
+
+      - name: Open promotion PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "prod: promote hello-service to ${{ inputs.image_tag }}"
+          branch: promote/hello-service-${{ inputs.image_tag }}
+          title: "prod 승격: hello-service ${{ inputs.image_tag }}"
+          body: |
+            dev에서 검증된 이미지 `${{ inputs.image_tag }}`를 prod로 승격합니다.
+
+            - 이 PR이 병합되면 ArgoCD `root-prod`가 감지해 `hello-prod` 네임스페이스에 자동 반영합니다.
+            - 리뷰 없이 이 파일을 직접 커밋하지 마세요 — 그게 이 워크플로가 존재하는 이유입니다.
+          labels: promotion

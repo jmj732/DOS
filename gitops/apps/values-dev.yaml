@@ -1,0 +1,23 @@
+applications:
+  - name: hello-service-dev
+    namespace: argocd
+    project: dev
+    sources:
+      - repoURL: https://github.com/jmj732/DevOps_study.git
+        targetRevision: main
+        path: charts/common
+        helm:
+          valueFiles:
+            - $values/gitops/values/dev/hello-service.yaml
+      - repoURL: https://github.com/jmj732/DevOps_study.git
+        targetRevision: main
+        ref: values
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: hello-dev
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true

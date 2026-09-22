@@ -1,0 +1,103 @@
+name: CI - test, build, scan, deploy to dev
+
+# hello-service 코드가 바뀔 때만 돈다. gitops/values 변경은 이 워크플로를 다시 트리거하지 않는다
+# (경로 필터 + 아래 커밋의 커밋 메시지에 실질적인 의미는 없지만 관례상 남겨 둔다).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/hello-service/**"
+      - ".github/workflows/ci-dev.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: ci-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 1) M-ADP 실제 파이프라인에는 없었던 단계. 여기를 통과하지 못하면 이미지도 만들지 않는다.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Run tests
+        working-directory: apps/hello-service
+        run: mvn -B test
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute immutable image tag (commit SHA 기반, 브랜치명 재사용 태그 아님)
+        id: vars
+        run: echo "image_tag=sha-$(echo ${{ github.sha }} | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/hello-service
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/hello-service:${{ steps.vars.outputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/hello-service:dev-latest
+
+  # 2) 이미지 스캔. exit-code를 0으로 둬서 데모 파이프라인이 항상 통과하게 했지만,
+  #    실무에서는 1로 바꿔 CRITICAL/HIGH가 나오면 배포 자체를 막아야 한다.
+  scan:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/hello-service:${{ needs.build-and-push.outputs.image_tag }}
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+          format: table
+
+  # 3) dev values는 사람이 브랜치를 만들 필요 없이 CI가 바로 반영한다 (빠른 반복이 목적인 환경).
+  update-dev-values:
+    needs: [build-and-push, scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install yq
+        run: |
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update dev image tag
+        run: yq eval -i '.image.tag = "${{ needs.build-and-push.outputs.image_tag }}"' gitops/values/dev/hello-service.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gitops/values/dev/hello-service.yaml
+          git commit -m "dev: deploy hello-service ${{ needs.build-and-push.outputs.image_tag }}" || echo "변경 없음, 커밋 생략"
+          git push origin main
