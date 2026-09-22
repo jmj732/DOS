@@ -32,7 +32,10 @@ build-and-push:
   stage: build
   image: docker:27
   services:
-    - docker:27-dind
+    - name: docker:27-dind
+      # 로컬 레지스트리가 HTTP(TLS 없음)라서 dind 데몬에 insecure로 등록해야 docker
+      # login/push가 "http: server gave HTTP response to HTTPS client"로 막히지 않는다.
+      command: ["--insecure-registry=host.docker.internal:5050"]
   variables:
     DOCKER_TLS_CERTDIR: ""
   script:
