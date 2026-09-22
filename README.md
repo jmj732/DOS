@@ -1,9 +1,9 @@
 # DevOps_study
 
-M-ADP 조직의 실제 GitOps/CI-CD 파이프라인을 분석하고 나온 개선점을 반영해서,
+실제 GitOps/CI-CD 파이프라인을 분석하고 나온 개선점을 반영해서,
 "처음부터 설계한다면"을 실제로 로컬 kind 클러스터 위에 구현한 실습 저장소.
 
-설계 근거와 M-ADP와의 비교는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)를 참고.
+설계 근거와 비교는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)를 참고.
 
 ## 구조
 
