@@ -6,7 +6,7 @@ metadata:
 spec:
   description: prod 환경 애플리케이션 전용 프로젝트. hello-prod 네임스페이스만 건드릴 수 있다.
   sourceRepos:
-    - https://github.com/jmj732/DevOps_study.git
+    - https://github.com/jmj732/DOS.git
   destinations:
     - namespace: hello-prod
       server: https://kubernetes.default.svc

@@ -3,13 +3,13 @@ applications:
     namespace: argocd
     project: prod
     sources:
-      - repoURL: https://github.com/jmj732/DevOps_study.git
+      - repoURL: https://github.com/jmj732/DOS.git
         targetRevision: main
         path: charts/common
         helm:
           valueFiles:
             - $values/gitops/values/prod/hello-service.yaml
-      - repoURL: https://github.com/jmj732/DevOps_study.git
+      - repoURL: https://github.com/jmj732/DOS.git
         targetRevision: main
         ref: values
     destination:
