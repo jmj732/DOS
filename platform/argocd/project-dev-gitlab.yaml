@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: dev-gitlab
+  namespace: argocd
+spec:
+  description: GitLab 파이프라인 실습 전용 프로젝트. hello-dev-gitlab 네임스페이스만 건드릴 수 있다.
+  sourceRepos:
+    - http://host.docker.internal:8929/root/devops-study.git
+  destinations:
+    - namespace: hello-dev-gitlab
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

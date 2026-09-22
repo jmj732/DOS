@@ -1,8 +1,19 @@
 # 로컬 실습용 kind 클러스터 정의.
 # control-plane 1대 + worker 1대로, 실무의 "컨트롤 플레인 / 워커" 구분을 축소 재현한다.
+#
+# containerdConfigPatches는 로컬 GitLab Container Registry(host.docker.internal:5050)를
+# insecure registry로 등록한다. 이 레지스트리는 HTTP(TLS 없음)로 떠 있기 때문이다.
+# M-ADP의 Jenkins가 Harbor에 --insecure --skip-tls-verify로 붙던 것과 같은 타협이며,
+# GitHub/GHCR만 쓸 때는 이 설정이 그냥 아무 영향도 주지 않는다.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: devops-study
 nodes:
   - role: control-plane
   - role: worker
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."host.docker.internal:5050"]
+      endpoint = ["http://host.docker.internal:5050"]
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."host.docker.internal:5050".tls]
+      insecure_skip_verify = true

@@ -1,0 +1,77 @@
+# .github/workflows/ci-dev.yaml과 같은 흐름을 GitLab CI/CD로 옮긴 것.
+# 차이점은 이미지 저장소가 GHCR이 아니라 GitLab Container Registry라는 것,
+# 그리고 이 파이프라인은 로컬 GitLab 인스턴스 + 자체 호스팅 GitLab Runner에서만 돈다는 것이다.
+# (GitLab Runner는 태생부터 "자체 호스팅"이 기본값이다 — GitHub Actions와 달리
+#  "호스팅형 러너를 쓸지 말지" 자체를 고민할 필요가 없다.)
+
+stages:
+  - test
+  - build
+  - scan
+  - deploy-dev
+
+variables:
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE"
+
+test:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd apps/hello-service
+    - mvn -B test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+build-and-push:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - export IMAGE_TAG="sha-$(echo $CI_COMMIT_SHA | cut -c1-12)"
+    - echo "IMAGE_TAG=$IMAGE_TAG" > build.env
+    - docker build -t "$IMAGE_NAME:$IMAGE_TAG" -t "$IMAGE_NAME:dev-latest" apps/hello-service
+    - docker push "$IMAGE_NAME:$IMAGE_TAG"
+    - docker push "$IMAGE_NAME:dev-latest"
+  artifacts:
+    reports:
+      dotenv: build.env
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  needs:
+    - build-and-push
+  script:
+    # CI 시점 exit-code는 0으로 둔다 (데모 파이프라인이 base 이미지 취약점 때문에
+    # 매번 실패하지 않도록). 실무에서는 1로 바꾼다.
+    - trivy image --exit-code 0 --severity CRITICAL,HIGH "$IMAGE_NAME:$IMAGE_TAG"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+update-dev-values:
+  stage: deploy-dev
+  image: alpine:3
+  needs:
+    - build-and-push
+    - scan
+  before_script:
+    - apk add --no-cache git yq
+  script:
+    - git config user.name "gitlab-ci"
+    - git config user.email "gitlab-ci@local"
+    - git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:8929/${CI_PROJECT_PATH}.git"
+    - yq eval -i ".image.tag = \"$IMAGE_TAG\"" gitops/values/dev-gitlab/hello-service.yaml
+    - yq eval -i ".image.repository = \"$IMAGE_NAME\"" gitops/values/dev-gitlab/hello-service.yaml
+    - git add gitops/values/dev-gitlab/hello-service.yaml
+    - git commit -m "dev(gitlab): deploy hello-service $IMAGE_TAG" || echo "변경 없음"
+    - git push origin HEAD:main
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

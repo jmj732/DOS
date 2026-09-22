@@ -1,0 +1,23 @@
+applications:
+  - name: hello-service-dev-gitlab
+    namespace: argocd
+    project: dev-gitlab
+    sources:
+      - repoURL: http://host.docker.internal:8929/root/devops-study.git
+        targetRevision: main
+        path: charts/common
+        helm:
+          valueFiles:
+            - $values/gitops/values/dev-gitlab/hello-service.yaml
+      - repoURL: http://host.docker.internal:8929/root/devops-study.git
+        targetRevision: main
+        ref: values
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: hello-dev-gitlab
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
