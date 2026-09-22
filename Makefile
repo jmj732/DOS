@@ -8,7 +8,7 @@ up:
 	kubectl create namespace argocd
 	helm repo add argo https://argoproj.github.io/argo-helm --force-update
 	helm repo update
-	helm install argocd argo/argo-cd --version 7.7.7 --namespace argocd --wait
+	helm install argocd argo/argo-cd --version 10.9.2 --namespace argocd --wait
 	kubectl apply -f platform/argocd/project-dev.yaml
 	kubectl apply -f platform/argocd/project-prod.yaml
 	kubectl apply -f platform/argocd/root-dev.yaml
