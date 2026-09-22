@@ -3,15 +3,15 @@
 # 그리고 이 파이프라인은 로컬 GitLab 인스턴스 + 자체 호스팅 GitLab Runner에서만 돈다는 것이다.
 # (GitLab Runner는 태생부터 "자체 호스팅"이 기본값이다 — GitHub Actions와 달리
 #  "호스팅형 러너를 쓸지 말지" 자체를 고민할 필요가 없다.)
-
-stages:
-  - test
-  - build
-  - scan
-  - deploy-dev
-
+#
+# GITLAB_HOST를 하드코딩하는 이유: GitLab의 $CI_REGISTRY/$CI_SERVER_HOST는
+# external_url(=localhost:8929, 이 컴퓨터의 브라우저·git push용)에서 뽑혀 나오는데,
+# CI job은 별도 컨테이너 안에서 도니까 그 안의 "localhost"는 자기 자신을 가리켜서
+# GitLab에 닿지 못한다. 컨테이너에서 호스트를 가리키는 이름은 host.docker.internal이다.
 variables:
-  IMAGE_NAME: "$CI_REGISTRY_IMAGE"
+  GITLAB_HOST: "host.docker.internal:8929"
+  REGISTRY_HOST: "host.docker.internal:5050"
+  IMAGE_NAME: "host.docker.internal:5050/root/devops-study"
 
 test:
   stage: test
@@ -30,7 +30,7 @@ build-and-push:
   variables:
     DOCKER_TLS_CERTDIR: ""
   script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
     - export IMAGE_TAG="sha-$(echo $CI_COMMIT_SHA | cut -c1-12)"
     - echo "IMAGE_TAG=$IMAGE_TAG" > build.env
     - docker build -t "$IMAGE_NAME:$IMAGE_TAG" -t "$IMAGE_NAME:dev-latest" apps/hello-service
@@ -67,7 +67,7 @@ update-dev-values:
   script:
     - git config user.name "gitlab-ci"
     - git config user.email "gitlab-ci@local"
-    - git remote set-url origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:8929/${CI_PROJECT_PATH}.git"
+    - git remote set-url origin "http://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_HOST}/${CI_PROJECT_PATH}.git"
     - yq eval -i ".image.tag = \"$IMAGE_TAG\"" gitops/values/dev-gitlab/hello-service.yaml
     - yq eval -i ".image.repository = \"$IMAGE_NAME\"" gitops/values/dev-gitlab/hello-service.yaml
     - git add gitops/values/dev-gitlab/hello-service.yaml
