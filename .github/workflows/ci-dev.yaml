@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 1) M-ADP 실제 파이프라인에는 없었던 단계. 여기를 통과하지 못하면 이미지도 만들지 않는다.
+  # 1) 실제 사례에는 없었던 단계. 여기를 통과하지 못하면 이미지도 만들지 않는다.
   test:
     runs-on: ubuntu-latest
     steps:

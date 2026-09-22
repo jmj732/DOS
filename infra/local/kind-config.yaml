@@ -1,5 +1,5 @@
 # 로컬 실습용 kind 클러스터 정의.
-# control-plane 1대 + worker 1대로, M-ADP의 "컨트롤 플레인 / 워커" 구분을 축소 재현한다.
+# control-plane 1대 + worker 1대로, 실무의 "컨트롤 플레인 / 워커" 구분을 축소 재현한다.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: devops-study
