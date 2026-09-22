@@ -71,7 +71,7 @@ update-dev-values:
     - yq eval -i ".image.tag = \"$IMAGE_TAG\"" gitops/values/dev-gitlab/hello-service.yaml
     - yq eval -i ".image.repository = \"$IMAGE_NAME\"" gitops/values/dev-gitlab/hello-service.yaml
     - git add gitops/values/dev-gitlab/hello-service.yaml
-    - git commit -m "dev(gitlab): deploy hello-service $IMAGE_TAG" || echo "변경 없음"
+    - 'git commit -m "dev(gitlab): deploy hello-service $IMAGE_TAG" || echo "no changes"'
     - git push origin HEAD:main
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
