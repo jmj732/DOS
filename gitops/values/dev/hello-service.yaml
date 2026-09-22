@@ -2,14 +2,11 @@
 # 이 파일이 "지금 dev에 무엇이 떠 있는가"에 대한 유일한 진실이다.
 image:
   repository: ghcr.io/jmj732/hello-service
-  tag: dev-latest
-
+  tag: sha-e10c25da007a
 replicaCount: 1
-
 env:
   - name: APP_ENV
     value: "dev"
-
 resources:
   requests:
     cpu: 100m
