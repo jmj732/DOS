@@ -90,6 +90,10 @@ update-dev-values:
     - yq eval -i ".image.repository = \"$IMAGE_NAME\"" gitops/values/dev-gitlab/hello-service.yaml
     - git add gitops/values/dev-gitlab/hello-service.yaml
     - 'git commit -m "dev(gitlab): deploy hello-service $IMAGE_TAG" || echo "no changes"'
-    - git push origin HEAD:main
+    # -o ci.skip: 이 push가 새 파이프라인을 만들지 않게 한다. 없으면 이 커밋이 다시
+    # 파이프라인을 돌리고, 그게 또 커밋하는 무한 루프가 생긴다(실제로 10→11→12로 확인).
+    # GitHub Actions는 GITHUB_TOKEN으로 한 push가 워크플로를 다시 트리거하지 않아서
+    # 이 문제가 없었다 — 플랫폼마다 "봇 커밋"을 다루는 기본값이 다르다.
+    - git push -o ci.skip origin HEAD:main
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
