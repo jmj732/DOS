@@ -25,6 +25,17 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+# JVM은 기동이 느리고, 노드가 바쁘면 더 느려진다(실측 45초). startupProbe가 성공할
+# 때까지 liveness/readiness는 검사를 시작하지 않으므로, 느린 기동 중에 liveness가
+# 컨테이너를 죽이는 재시작 루프를 막는다. 최대 5초 x 30회 = 150초까지 기다린다.
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  periodSeconds: 5
+  failureThreshold: 30
+
 livenessProbe:
   enabled: true
   httpGet:
