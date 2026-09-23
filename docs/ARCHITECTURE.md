@@ -99,3 +99,21 @@ mvn sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=<발급받�
 ```
 
 3번과 6번 사이의 차이가 이 설계의 핵심이다: **dev는 자동, prod는 사람이 검토한 변경만.**
+
+## 같은 흐름을 로컬 GitLab으로 옮기며 배운 것
+
+`.gitlab-ci.yml`은 위 흐름의 1~3번(dev 자동 배포)을 로컬 GitLab CE + 자체 호스팅 Runner로
+재현한다. 흐름 자체는 같지만, 플랫폼의 **기본값**이 달라서 GitHub에서는 없던 문제가 생겼다.
+
+| 겪은 문제 | 원인 | 해결 |
+|---|---|---|
+| CI job에서 GitLab에 접속 불가 | GitLab이 알려 주는 주소(`$CI_REGISTRY` 등)는 `external_url`=`localhost` 기준인데, job 컨테이너 안의 `localhost`는 자기 자신 | 컨테이너 → 호스트 이름인 `host.docker.internal`로 통일 (Runner `clone_url`, CI 변수, Windows hosts, `external_url`) |
+| docker:dind로 이미지 push 실패 (HTTP 레지스트리) | host 네트워크 러너에서 dind의 insecure-registry 설정이 먹지 않음 | 데몬이 필요 없는 **Kaniko** + `--insecure --skip-tls-verify` |
+| Trivy가 레지스트리/DB에서 실패 | HTTP 레지스트리, 느린 환경에서 DB 다운로드 5분 초과 | `--insecure`, `--timeout 15m` |
+| CI가 dev values를 push하지 못함 (403) | `CI_JOB_TOKEN`은 기본적으로 저장소 쓰기 권한이 없음 | `write_repository` PAT를 **masked CI 변수**(`GITLAB_PUSH_TOKEN`)로 등록. 파일에는 절대 쓰지 않는다 |
+| **파이프라인 무한 루프** (10→11→12) | CI가 main에 한 커밋이 다시 파이프라인을 트리거. GitHub는 `GITHUB_TOKEN`의 push가 워크플로를 트리거하지 않아 이 문제가 없었다 | `git push -o ci.skip` |
+| 파드 재시작 루프 | 자원이 빠듯해 JVM 기동이 45초 → liveness(15s + 10s×3)가 먼저 죽임 | 공통 차트에 `startupProbe`(최대 150초) 추가 |
+| 전체가 느리고 Docker가 죽음 | GitLab(~5GB) + kind + CI job이 16GB PC에서 동시 실행 | kind를 1노드로 줄이고, 파이프라인 도는 동안에는 kind를 멈춤 |
+
+교훈: **CI/CD 도구를 바꾸면 "봇이 한 커밋을 어떻게 취급하는가", "토큰 권한의 기본값",
+"컨테이너 안에서 본 네트워크 주소"를 가장 먼저 확인해야 한다.** YAML 문법 차이는 사소하다.
