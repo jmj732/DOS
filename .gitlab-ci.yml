@@ -82,7 +82,10 @@ update-dev-values:
   script:
     - git config user.name "gitlab-ci"
     - git config user.email "gitlab-ci@local"
-    - git remote set-url origin "http://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_HOST}/${CI_PROJECT_PATH}.git"
+    # CI_JOB_TOKEN은 기본적으로 이 저장소에 push 권한이 없다("You are not allowed to
+    # push code to this project"). GITLAB_PUSH_TOKEN은 write_repository 권한을 가진
+    # 개인 액세스 토큰으로, CI/CD 변수(Settings > CI/CD > Variables)에 등록해 둔 것이다.
+    - git remote set-url origin "http://root:${GITLAB_PUSH_TOKEN}@${GITLAB_HOST}/${CI_PROJECT_PATH}.git"
     - yq eval -i ".image.tag = \"$IMAGE_TAG\"" gitops/values/dev-gitlab/hello-service.yaml
     - yq eval -i ".image.repository = \"$IMAGE_NAME\"" gitops/values/dev-gitlab/hello-service.yaml
     - git add gitops/values/dev-gitlab/hello-service.yaml
