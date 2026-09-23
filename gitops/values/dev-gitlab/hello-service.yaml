@@ -1,15 +1,12 @@
 # gitops/values/dev/hello-service.yaml과 같은 역할이지만 GitLab 파이프라인 전용.
 # .gitlab-ci.yml의 update-dev-values job이 배포마다 image.tag/repository를 자동으로 고쳐 쓴다.
 image:
-  repository: host.docker.internal:5050/root/hello-service
-  tag: dev-latest
-
+  repository: host.docker.internal:5050/root/devops-study
+  tag: sha-59203a35e344
 replicaCount: 1
-
 env:
   - name: APP_ENV
     value: "dev-gitlab"
-
 resources:
   requests:
     cpu: 100m
