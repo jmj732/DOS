@@ -66,7 +66,8 @@ scan:
   script:
     # CI 시점 exit-code는 0으로 둔다 (데모 파이프라인이 base 이미지 취약점 때문에
     # 매번 실패하지 않도록). 실무에서는 1로 바꾼다.
-    - trivy image --insecure --exit-code 0 --severity CRITICAL,HIGH "$IMAGE_NAME:$IMAGE_TAG"
+    # 이 로컬 환경이 느려서(Java DB 다운로드 등) 기본 5분 타임아웃에 걸리므로 늘려 둔다.
+    - trivy image --insecure --timeout 15m --exit-code 0 --severity CRITICAL,HIGH "$IMAGE_NAME:$IMAGE_TAG"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
